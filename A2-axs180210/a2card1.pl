@@ -33,6 +33,7 @@ winner(H1, H2, Winner) :-
    (SortedWinner = left, Winner = H1 ;
     SortedWinner = right, Winner = H2)).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Generate Random Hand
 randomHand(0, _, [], []).
 
@@ -54,6 +55,19 @@ deal(N, X, Y) :-
   [2,heart],[3,heart],[4,heart],[5,heart],[6,heart],[7,heart],[8,heart],
   [9,heart],[10,heart],[jack,heart],[queen,heart],[king,heart],[ace,heart]],
   randomHand(N, D, X, Y).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Fill Table
+rank(X,N) :-
+  rank(X, high_card, 8).
+
+rank(X,X,N).
+
+rank(X, Tmp, N) :-
+  T is successor(Tmp),
+  N1 is N - 1,
+  rank(X, T, N1).
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  Tiebreaks
