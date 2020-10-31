@@ -34,3 +34,11 @@
 		(+ 1 (count-digit (/ n 10)))
 	)
 )
+
+; Good
+(defun truestuff(n)
+	(if (or (eql n t) (eql n NIL))
+		t
+		NIL
+	)
+)

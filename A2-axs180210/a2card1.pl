@@ -1,15 +1,39 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  Ansun Sujoe - AXS180210
+%%  a2card1.pl
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%  Playing the game for iterations
+playturns(0, Grid).
+playturns(X) :-
+  play2(I, J),
+  Grid = [[0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0]],
+  
+  S is X - 1,
+  playturns(S),!.
 
 %% -----------------------------------
-%% you may try a test using play2 with a sample test case
+%% Play2 for one deal with 2 players
 %% -----------------------------------
 
-play2 :- 
+play2(I, J) :- 
   deal(5,H1,H2),
   winner(H1,H2, Winner),
-  print(H1), print(H2), nl, write('Player 1 has '),
-  determine_hand(H1, X), print(X), nl, write('Player 2 has '),
-  determine_hand(H2, Y), print(Y), nl,
-  write('Winner is '), print(Winner),!.
+  nl, write('Player 1 has '),
+  determine_hand(H1, X), rank(X, I), print(X), write(', Rank: '), print(I), 
+  write(', Hand: '), print(H1), nl, write('Player 2 has '),
+  determine_hand(H2, Y), rank(Y, J), print(Y), write(', Rank: '), print(J), 
+  write(', Hand: '), print(H2), nl,
+  write('Winner is Player '), print(Winner),nl,!.
 
 
 play([],0).
@@ -58,16 +82,16 @@ deal(N, X, Y) :-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Fill Table
-rank(X,N) :-
-  rank(X, high_card, 8).
 
-rank(X,X,N).
+ranklist(A, [A|_], 0).
+ranklist(A, [X|Y], N) :-
+  ranklist(A, Y, N1),
+  N is N1 + 1.
 
-rank(X, Tmp, N) :-
-  T is successor(Tmp),
-  N1 is N - 1,
-  rank(X, T, N1).
-
+rank(A, R) :-
+  List = [royal_flush, straight_flush, four_of_a_kind, full_house, flush, 
+    straight, three_of_a_kind, two_pair, pair, high_card],
+  ranklist(A, List, R).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  Tiebreaks
@@ -97,9 +121,6 @@ tiebreak(high_card, H1, H2, X) :-
   reverse(H1, RevH1),
   reverse(H2, RevH2),
   highest_card_chain(RevH1, RevH2, X).
-
-
-
 
 beats_with_hand(H1, C1, H2, C2, X) :-
   beats(C1, C2, C1), X = left ;
