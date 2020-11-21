@@ -52,11 +52,11 @@ print2pGrid([X|R]) :-
 %% -----------------------------------
 simulate1p :-
   Freq = [0,0,0,0,0,0],
-  % write('Dealing 1,000,000 hands... '), nl,
-  play1pIteration(100, Freq).
+  write('Dealing 10,000 hands... '), nl,
+  play1pIteration(10000, Freq).
 
 probabilityDivide(X, Y) :-
-  Y is X / 100.
+  Y is X / 10000.
 
 play1pIteration(0, Freq) :-
   nl,
@@ -108,19 +108,19 @@ play([[Hand1,Hand2]|Rst], Num_Wins) :-
 %% Play2 for one deal with 1 player
 %% -----------------------------------
 
-play1p(I) :-
-  deal1p(3,H),
-  sort_hand(H, Sorted_Hand),
-  determine_hand(Sorted_Hand, X),
-  rank(X, I),
-  write('Hand: '), print(Sorted_Hand), nl,
-  write('Rank: '), print(I), nl, nl, !.
-
-% play1p(I) :- 
+% play1p(I) :-
 %   deal1p(3,H),
 %   sort_hand(H, Sorted_Hand),
 %   determine_hand(Sorted_Hand, X),
-%   rank(X, I), !.
+%   rank(X, I),
+%   write('Hand: '), print(Sorted_Hand), nl,
+%   write('Rank: '), print(I), nl, nl, !.
+
+play1p(I) :- 
+  deal1p(3,H),
+  sort_hand(H, Sorted_Hand),
+  determine_hand(Sorted_Hand, X),
+  rank(X, I), !.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -15,24 +15,43 @@ simulate2p :-
     [0,0,0,0,0,0,0,0,0,0],
     [0,0,0,0,0,0,0,0,0,0],
     [0,0,0,0,0,0,0,0,0,0]],
-  playturns(100000,Grid).
+  Wins = [0,0,0,0,0,0,0,0,0,0],
+  Totals = [0,0,0,0,0,0,0,0,0,0],
+  playturns(1000, Grid, Wins, Totals).
 
 %%  Playing the game for iterations
-playturns(0, Grid) :-
+playturns(0, Grid, Wins, Totals) :-
   nl,
   write('Grid:'),
   nl,
-  print2pGrid(Grid).
+  print2pGrid(Grid),
+  nl,
+  write('Wins:'),
+  nl,
+  print(Wins),
+  nl,
+  write('Totals:'),
+  nl,
+  print(Totals),
+  nl.
 
-playturns(X, Grid) :-
-  play2(I, J), 
+playturns(X, Grid, Wins, Totals) :-
+  play2(I, J, Winner), 
   nth0(I, Grid, L),
   nth0(J, L, N),
   N1 is N + 1,
   replace(L, J, N1, NRow),
   replace(Grid, I, NRow, Grid1),
+
+  nth0(I, Totals, T),
+  T1 is T + 1,
+  replace(Totals, I, T1, NewTotals),
+
+  creditWin(Winner, I, Wins, NewWins),
+  print(Winner),nl,
+
   S is X - 1,
-  playturns(S, Grid1), !.
+  playturns(S, Grid1, NewWins, NewTotals), !.
 
 % Replace one grid row
 replace([_|T], 0, X, [X|T]).
@@ -41,6 +60,14 @@ replace([H|T], I, X, [H|R]) :-
   NI is I-1, 
   replace(T, NI, X, R), !.
 replace(L, _, _, L).
+
+% Update the wins if Player 1 wins
+creditWin(1, Rank, Player1Wins, NewWins) :-
+  nth0(Rank, Player1Wins, T),
+  T1 is T + 1,
+  replace(Player1Wins, Rank, T1, NewWins), !.
+
+creditWin(_, Rank, Player1Wins, Player1Wins).
 
 % Print a grid in nice format
 print2pGrid([]).
@@ -62,9 +89,12 @@ print2pGrid([X|R]) :-
 %   write(', Hand: '), print(Sorted_Hand2), nl,
 %   write('Winner is Player '), print(Winner),nl.
 
-play2(I, J) :- 
+play2(I, J, Winner) :- 
   deal(5,H1,H2), !,
-  winner(H1,H2, Winner), sort_hand(H1, Sorted_Hand1),
+  winner(H1,H2, WinningHand),
+  (WinningHand = H1, Winner = 1 ;
+  Winner = 2),
+  sort_hand(H1, Sorted_Hand1),
   determine_hand(Sorted_Hand1, X), rank(X, I), sort_hand(H2, Sorted_Hand2),
   determine_hand(Sorted_Hand2, Y), rank(Y, J).
 
