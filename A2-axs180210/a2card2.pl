@@ -1,19 +1,22 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  Ansun Sujoe - AXS180210
-%%  a2card1.pl
-%%  Three card poker
+%%  a2card2.pl
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% -----------------------------------
 %% Simulate poker for two players
 %% -----------------------------------
 simulate2p :-
-  Grid = [[0,0,0,0,0,0],
-    [0,0,0,0,0,0],
-    [0,0,0,0,0,0],
-    [0,0,0,0,0,0],
-    [0,0,0,0,0,0],
-    [0,0,0,0,0,0]],
+  Grid = [[0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0]],
   playturns(100000,Grid).
 
 %%  Playing the game for iterations
@@ -51,12 +54,12 @@ print2pGrid([X|R]) :-
 %% Simulate poker for 1 player - probabilities
 %% -----------------------------------
 simulate1p :-
-  Freq = [0,0,0,0,0,0],
-  % write('Dealing 1,000,000 hands... '), nl,
-  play1pIteration(100, Freq).
+  Freq = [0,0,0,0,0,0,0,0,0,0],
+  write('Dealing 1,000,000 hands... '), nl,
+  play1pIteration(1000000, Freq).
 
 probabilityDivide(X, Y) :-
-  Y is X / 100.
+  Y is X / 1000000.
 
 play1pIteration(0, Freq) :-
   nl,
@@ -82,7 +85,7 @@ play1pIteration(N, Freq) :-
 %% -----------------------------------
 
 % play2(I, J) :- 
-%   deal(3,H1,H2),
+%   deal(5,H1,H2),
 %   winner(H1,H2, Winner),
 %   nl, write('Player 1 has '), sort_hand(H1, Sorted_Hand1),
 %   determine_hand(Sorted_Hand1, X), rank(X, I), print(X), write(', Rank: '), print(I), 
@@ -92,7 +95,7 @@ play1pIteration(N, Freq) :-
 %   write('Winner is Player '), print(Winner),nl.
 
 play2(I, J) :- 
-  deal(3,H1,H2), !,
+  deal(5,H1,H2), !,
   winner(H1,H2, Winner), sort_hand(H1, Sorted_Hand1),
   determine_hand(Sorted_Hand1, X), rank(X, I), sort_hand(H2, Sorted_Hand2),
   determine_hand(Sorted_Hand2, Y), rank(Y, J).
@@ -109,15 +112,15 @@ play([[Hand1,Hand2]|Rst], Num_Wins) :-
 %% -----------------------------------
 
 play1p(I) :-
-  deal1p(3,H),
+  deal1p(5,H),
   sort_hand(H, Sorted_Hand),
   determine_hand(Sorted_Hand, X),
   rank(X, I),
   write('Hand: '), print(Sorted_Hand), nl,
-  write('Rank: '), print(I), nl, nl, !.
+  write('Rank: '), print(I), nl, !.
 
 % play1p(I) :- 
-%   deal1p(3,H),
+%   deal1p(5,H),
 %   sort_hand(H, Sorted_Hand),
 %   determine_hand(Sorted_Hand, X),
 %   rank(X, I), !.
@@ -189,14 +192,27 @@ ranklist(A, [X|Y], N) :-
   N is N1 + 1.
 
 rank(A, R) :-
-  List = [straight_flush, three_of_a_kind, straight, flush, pair, high_card],
+  List = [royal_flush, straight_flush, four_of_a_kind, full_house, flush, 
+    straight, three_of_a_kind, two_pair, pair, high_card],
   ranklist(A, List, R), !.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  Tiebreaks
 tiebreak(straight_flush, H1, H2, Winner)  :- higher_last_card(H1, H2, Winner).
+tiebreak(four_of_a_kind, H1, H2, Winner)  :- higher_middle_card(H1, H2, Winner).
+tiebreak(full_house, H1, H2, Winner)      :- higher_middle_card(H1, H2, Winner).
 tiebreak(flush, H1, H2, Winner)           :- tiebreak(high_card, H1, H2, Winner).
 tiebreak(straight, H1, H2, Winner)        :- higher_last_card(H1, H2, Winner).
+tiebreak(three_of_a_kind, H1, H2, Winner) :- higher_middle_card(H1, H2, Winner).
+
+tiebreak(two_pair, H1, H2, Winner) :-
+  isolate_pairs(H1, [HighCard1,_], [LowCard1,_], Last1),
+  isolate_pairs(H2, [HighCard2,_], [LowCard2,_], Last2),
+  (beats_with_hand(H1, HighCard1, H2, HighCard2, Winner),
+   Winner \= tie;
+   beats_with_hand(H1, LowCard1, H2, LowCard2, Winner),
+   Winner \= tie;
+   beats_with_hand(H1, Last1, H2, Last2, Winner)).
      
 tiebreak(pair, H1, H2, Winner) :-
   isolate_pair(H1, [PairCard1,_], Rst1),
@@ -214,10 +230,22 @@ beats_with_hand(H1, C1, H2, C2, X) :-
   beats(C1, C2, C2), X = right ;
   X = tie.
 
+% Really ugly.  How to better do this?
+isolate_pairs(Hand, High_Pair, Low_Pair, Last) :-
+  [[V1,S1],[V2,S2],[V3,S3],[V4,S4],[V5,S5]] = Hand,
+  (V5 = V4, High_Pair = [[V4,S4],[V5,S5]],
+    (V3 = V2, Low_Pair = [[V3,S3],[V2,S2]], Last = [V1,S1] ;
+     V1 = V2, Low_Pair = [[V1,S1],[V2,S2]], Last = [V3,S3])) ;
+  (Low_Pair = [[V1,S1],[V2,S2]], 
+   High_Pair = [[V3,S3],[V4,S4]],
+   Last = [V5,S5]).
+
 isolate_pair(Hand, Pair, Rst) :-
-  [[V1,S1],[V2,S2],[V3,S3]] = Hand,
-  (V1 = V2, Pair = [[V1,S1],[V2,S2]], Rst = [[V3,S3]] ;
-   V2 = V3, Pair = [[V3,S3],[V2,S2]], Rst = [[V1,S1]]).
+  [[V1,S1],[V2,S2],[V3,S3],[V4,S4],[V5,S5]] = Hand,
+  (V1 = V2, Pair = [[V1,S1],[V2,S2]], Rst = [[V3,S3],[V4,S4],[V5,S5]] ;
+   V2 = V3, Pair = [[V3,S3],[V2,S2]], Rst = [[V1,S1],[V4,S4],[V5,S5]] ;
+   V4 = V3, Pair = [[V3,S3],[V4,S4]], Rst = [[V1,S1],[V2,S2],[V5,S5]] ;
+   V4 = V5, Pair = [[V5,S5],[V4,S4]], Rst = [[V1,S1],[V2,S2],[V3,S3]]).
   
 
 highest_card_chain([H1|T1], [H2|T2], X) :-
@@ -227,15 +255,15 @@ highest_card_chain([H1|T1], [H2|T2], X) :-
    Verdict = tie, highest_card_chain(T1,T2,X)).
 
 higher_last_card(H1,H2,Winner) :-
-  H1 = [_,_,[V1,_]],
-  H2 = [_,_,[V2,_]],
+  H1 = [_,_,_,_,[V1,_]],
+  H2 = [_,_,_,_,[V2,_]],
   beats(V1,V2,Higher),
   (Higher = V1, Winner = left ;
    Higher = V2, Winner = right).
 
 higher_middle_card(H1, H2, Winner) :-
-  H1 = [_,[V1,_],_],
-  H2 = [_,[V2,_],_],
+  H1 = [_,_,[V1,_],_,_],
+  H2 = [_,_,[V2,_],_,_],
   beats(V1,V2,Higher),
   (Higher = V1, Winner = left;
    Higher = V2, Winner = right).
@@ -243,21 +271,31 @@ higher_middle_card(H1, H2, Winner) :-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  Hand determination
+determine_hand([[10,X],[jack,X],[queen,X],[king,X],[ace,X]], royal_flush).
 
-determine_hand([[A,X],[B,X],[C,X]], straight_flush) :-
-  successor(C,B), successor(B,A).
+determine_hand([[A,X],[B,X],[C,X],[D,X],[E,X]], straight_flush) :-
+  successor(E,D), successor(D,C), successor(C,B), successor(B,A).
 
-determine_hand([[_,X],[_,X],[_,X]], flush).
+determine_hand([[C,_],[A,_],[A,_],[A,_],[B,_]], four_of_a_kind) :-
+  C = A ; B = A.
 
-determine_hand([[A,_],[B,_],[C,_]], straight) :-
-  successor(C,B), successor(B,A).
+determine_hand([[A,_],[B,_],[C,_],[D,_],[E,_]], full_house) :-
+  A = B, D = E, (C = D ; C = B).
 
-determine_hand([[A,_],[B,_],[C,_]], three_of_a_kind) :-
-  A = B,
-  B = C.
+determine_hand([[_,X],[_,X],[_,X],[_,X],[_,X]], flush).
 
-determine_hand([[A,_],[B,_],[C,_]], pair) :-
-  A = B; B = C.
+determine_hand([[A,_],[B,_],[C,_],[D,_],[E,_]], straight) :-
+  successor(E,D), successor(D,C), successor(C,B), successor(B,A).
+
+determine_hand([[A,_],[B,_],[C,_],[D,_],[E,_]], three_of_a_kind) :-
+  (A = B, B = C); (B = C, C = D); (C = D, D = E).
+
+determine_hand([[A,_],[A,_],[B,_],[B,_],[_,_]], two_pair).
+determine_hand([[_,_],[A,_],[A,_],[B,_],[B,_]], two_pair).
+determine_hand([[A,_],[A,_],[_,_],[B,_],[B,_]], two_pair).
+
+determine_hand([[A,_],[B,_],[C,_],[D,_],[E,_]], pair) :-
+  A = B; B = C; C = D; D = E.
 
 determine_hand(_,high_card).
 
@@ -291,8 +329,10 @@ beats(X,X,tie).
 beats(X,Y,X) :- value_greater_than(X,Y).
 beats(X,Y,Y) :- value_greater_than(Y,X).
 
-successor(straight_flush, three_of_a_kind).      successor(three_of_a_kind, straight).
-successor(straight, flush).     successor(flush, pair).
+successor(royal_flush, straight_flush).   successor(straigh_flush, four_of_a_kind).
+successor(four_of_a_kind, full_house).    successor(full_house, flush).
+successor(flush, straight).               successor(straight, three_of_a_kind).
+successor(three_of_a_kind, two_pair).     successor(two_pair, pair).
 successor(pair, high_card).
 
 successor(ace,king).     successor(king,queen).   successor(queen,jack).
