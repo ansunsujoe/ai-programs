@@ -3,6 +3,81 @@
 %%  a2card3.pl
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%% -----------------------------------
+%% Play poker with knowledge of win rates
+%% -----------------------------------
+
+% Make predictions on win or loss and check
+playPredict(N) :-
+  ConfMatrix = [[0,0,0,0,0],
+    [0,0,0,0,0],
+    [0,0,0,0,0],
+    [0,0,0,0,0],
+    [0,0,0,0,0],
+    [0,0,0,0,0],
+    [0,0,0,0,0],
+    [0,0,0,0,0],
+    [0,0,0,0,0],
+    [0,0,0,0,0]],
+  Rates = [1, 1, 1, 0.985, 0.989, 0.992, 0.982, 0.956, 0.713, 0.253],
+  predictTurns(N, Rates, ConfMatrix).
+
+% Predicting for iterations
+predictTurns(0, Rates, ConfMatrix) :-
+  calcPrecisionRate(ConfMatrix, NewMatrix),
+  write('Confusion Matrix: '), nl,
+  write('TP\tFP\tFN\tTN\tPrecision'), nl,
+  write('---------------------------------------------'), nl,
+  printConfMatrixValues(NewMatrix).
+
+predictTurns(N, Rates, ConfMatrix) :-
+  play2(I, J, Winner),
+  nth0(I, Rates, Rate),
+  
+  nth0(I, ConfMatrix, Row),
+  nth0(0, Row, TP),
+  nth0(1, Row, FP),
+  nth0(2, Row, FN),
+  nth0(3, Row, TN),
+
+  % Populate the confusion matrix
+  (Rate > 0.5, Winner = 1, 
+    NewTP is TP + 1, replace(Row, 0, NewTP, NewRow) ;
+  Rate > 0.5, Winner = 2, 
+    NewFP is FP + 1, replace(Row, 1, NewFP, NewRow) ;
+  Winner = 1, 
+    NewFN is FN + 1, replace(Row, 2, NewFN, NewRow) ;
+  Winner = 2, 
+    NewTN is TN + 1, replace(Row, 3, NewTN, NewRow)
+  ),
+  replace(ConfMatrix, I, NewRow, NewConfMatrix),
+
+  S is N - 1,
+  predictTurns(S, Rates, NewConfMatrix), !.
+
+% Calculate precision rate
+calcPrecisionRate([], []).
+
+calcPrecisionRate([C|R], [NewC|NewR]) :-
+  nth0(0, C, TP),
+  nth0(1, C, FP),
+  nth0(2, C, FN),
+  nth0(3, C, TN),
+  (TP = 0, FP = 0, FN = 0, TN = 0, Precision = 1 ;
+  Precision is (TP + TN) / (TP + FP + FN + TN)),
+  replace(C, 4, Precision, NewC),
+  calcPrecisionRate(R, NewR).
+
+% Print a confusion matrix in nice format
+printConfMatrixValues([]).
+printConfMatrixValues([X|R]) :-
+  format('~w\t~w\t~w\t~w\t~w\t~n',X),
+  printConfMatrixValues(R).
+
+%% -----------------------------------
+%% Simulate Poker (Monte-Carlo style) to identify statistical trends
+%% -----------------------------------
+
 % Simulate poker
 simulate2p :-
   Grid = [[0,0,0,0,0,0,0,0,0,0],
