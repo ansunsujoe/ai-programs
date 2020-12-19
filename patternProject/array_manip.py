@@ -22,3 +22,22 @@ def allNumsEqual(numbers):
         if numbers[i] != trueNum:
             return False
     return True
+
+# Extend an array that has all equal numbers
+def resizeEqualArray(array, newSize):
+    if not allNumsEqual(array):
+        raise ValueError("Only an array with all equal values can be used")
+    elif len(array) == 0:
+        raise ValueError("The array is empty")
+    elif newSize == len(array):
+        return array
+    elif newSize < len(array):
+        newArray = array
+        for i in range(len(array) - newSize):
+            newArray.pop(0)
+        return newArray
+    elif newSize > len(array):
+        newArray = array
+        for i in range(newSize - len(array)):
+            newArray.append(array[0])
+        return newArray

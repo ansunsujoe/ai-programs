@@ -13,7 +13,7 @@ def scaleUpChanges(numbers, changes, operation):
             scaledArray.append(scaledArray[i] * changes[i])
     # Take out the first element as that is only a helper
     scaledArray.pop(0)
-    print(str(scaledArray))
+    print(str(changes) + " -> " + str(scaledArray))
     return scaledArray
     
 
@@ -23,14 +23,21 @@ def identifyPattern(numbers, predictionNums):
     if len(numbers) <= 1:
         return []
     elif am.allNumsEqual(numbers):
-        return numbers
+        return am.resizeEqualArray(numbers, predictionNums)
 
-    # Calculate the change-in arrays and scale down
+    # Calculate the change-in arrays and scale up
     additionArray, multArray = am.changeIn(numbers)
     print(additionArray)
-    if identifyPattern(additionArray, predictionNums) != []:
-        return scaleUpChanges(numbers, additionArray, "add")
-    elif multArray != [] and identifyPattern(multArray, predictionNums) != []:
-        return scaleUpChanges(numbers, additionArray, "mult")
-    else:
-        return []
+
+    # Scaled up addition array
+    newAddChangesArray = identifyPattern(additionArray, predictionNums)
+    if newAddChangesArray != []:
+        return scaleUpChanges(numbers, newAddChangesArray, "add")
+
+    # If not, then scaled up multiplication array
+    newMultChangesArray = identifyPattern(multArray, predictionNums)
+    if multArray != [] and newMultChangesArray != []:
+        return scaleUpChanges(numbers, newMultChangesArray, "mult")
+    
+    # If neither method worked, then we failed
+    return []

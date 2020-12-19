@@ -1,4 +1,4 @@
-import pattern_matching as pm
+import numeric_matching as nm
 
 #############
 # MAIN 
@@ -18,7 +18,9 @@ except ValueError:
 print("The array is: " + " ".join([str(x) for x in numbers]))
 
 # Try to find the pattern and print it
-continuation = pm.identifyPattern(numbers, predictionNums)
+continuation = nm.identifyPattern(numbers, predictionNums)
 if continuation != []:
     print("A continuation is: " + " ".join([str(x) for x in continuation]))
     print("Pattern found")
+else:
+    print("A continuation does not exist. A pattern could not be found!")
