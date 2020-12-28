@@ -2,7 +2,8 @@
 class TreeNode():
 
     # The constructor
-    def __init__(self, parent):
+    def __init__(self, parent, value):
+        self.value = value
         self.visits = 0
         self.children = {}
         self.parent = parent
@@ -13,16 +14,34 @@ class TreeNode():
     # The representation
     def __repr__(self):
         if self.parent:
-            return (self.depth * "  ") + "<Node Popularity {} Children {}>".format(round(self.visits / self.parent.visits, 2), list(self.children.keys()))
+            return (self.depth * "  ") + "<Node Popularity {} Visits {} Children {}>".format(round(self.getPopularity(), 2), self.visits, list(self.children.keys()))
         else:
-            return "<RootNode Children {}>".format(list(self.children.keys()))
+            return "<RootNode Children {} Visits {}>".format(list(self.children.keys()), self.visits)
     
     # Get the relative popularity of a node compared to its peers
     def getPopularity(self):
         if self.parent:
-            return self.visits / self.parent.visits
+            if self.parent.visits > 0:
+                return self.visits / self.parent.visits
+            else:
+                return 0
         else:
             return 1
+    
+    # Prune a node and its children
+    def prune(self):
+
+        # Remove the reference from the parent
+        parentNode = self.parent
+        del parentNode.children[self.value]
+
+        # Remove all the children from the child
+        for cnk in list(self.children.keys()):
+            prune(self.children[cnk])
+
+        # Clear the dictionary and itself
+        self.children = None
+        self = None
 
 # Pattern Tree
 class PatternTree():
@@ -45,8 +64,7 @@ class PatternTree():
             insertArrayRecursive(self.root, pattern[i:])
     
     def printDiscoveredPatterns(self):
-        parents = []
-        print(printPatternsRecursive(self.root, parents, 1))
+        print(printPatternsRecursive(self.root, [], 1))
 
     
 # Other helper methods
@@ -63,44 +81,54 @@ def insertArrayRecursive(treePos, array):
 
     except KeyError:
         # Add new node if it does not exist in the children dict
-        newNode = TreeNode(treePos)
-        newNode.visits = 1
+        newNode = TreeNode(treePos, array[0])
+        newNode.visits = 0
         treePos.children[array[0]] = newNode
 
         # Add child node of the new node
         if len(array) >= 2:
-            newNode.children[array[1]] = TreeNode(newNode)
-            newNode.children[array[1]].visits = 1
+            newNode.children[array[1]] = TreeNode(newNode, array[1])
+            newNode.children[array[1]].visits = 0
 
+# Print the nodes in the tree in a hierarchy
 def printNodes(root):
     currentString = str(root) + "\n"
     for cnk in list(root.children.keys()):
         currentString += printNodes(root.children[cnk])
     return currentString
 
+# Print all the meaningful patterns we can find
 def printPatternsRecursive(treeNode, parents, prevProbability):
+
     # If there are no children, then return the string with the pattern
-    if len(list(treeNode.children.keys())) == 0:
-        return "Pattern {}, Probability {}\n".format(parents, prevProbability * treeNode.getPopularity())
+    if len(treeNode.children) == 0:
+
+        # If the pattern is too short, then prune
+        if treeNode.depth <= 2:
+            treeNode.prune()
+            return ""
+        
+        # Else return the pattern we found
+        return "Pattern {}, Cum Popularity {}\n".format(parents, prevProbability * treeNode.getPopularity())
+
+    # We do have children
     else:
         printString = ""
+    
         for cnk in list(treeNode.children.keys()):
-            if parents is None:
-                printString += printPatternsRecursive(treeNode.children[cnk], [cnk], prevProbability * treeNode.getPopularity())
-            else:
-                newList = parents.append(cnk)
-                printString += printPatternsRecursive(treeNode.children[cnk], newList, prevProbability * treeNode.getPopularity())
+            parents.append(cnk)
+            printString += printPatternsRecursive(treeNode.children[cnk], parents, prevProbability * treeNode.getPopularity())
+            parents.pop()
         return printString
 
 
 if __name__ == "__main__":
     # Create the root and the tree
-    root = TreeNode(None)
+    root = TreeNode(None, None)
     patternTree = PatternTree(root)
 
     # Insert an array in the pattern tree
-    patternTree.insertPattern([1, 2, 3, 1, 2, 3, 1, 2, 3])
-    print(patternTree)
-    print()
-    print()
+    patternTree.insertPattern([1, 2, 3, 4, 1, 2, 3, 3, 2, 1, 2, 3, 2])
     patternTree.printDiscoveredPatterns()
+    print()
+    print(patternTree)
