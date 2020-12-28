@@ -2,10 +2,11 @@
 class TreeNode():
 
     # The constructor
-    def __init__(self, parent, value):
+    def __init__(self, parent, value, tolerance):
         self.value = value
+        self.tolerance = tolerance
         self.visits = 0
-        self.children = {}
+        self.children = []
         self.parent = parent
         self.depth = 0
         if parent:
@@ -14,9 +15,9 @@ class TreeNode():
     # The representation
     def __repr__(self):
         if self.parent:
-            return (self.depth * "  ") + "<Node {} Popularity {} Visits {}>".format(self.value, round(self.getPopularity(), 2), self.visits)
+            return (self.depth * "  ") + "<Node {} Tolerance {} Visits {} NumChildren {}>".format(self.value, round(self.tolerance, 2), self.visits, len(self.children))
         else:
-            return "<RootNode Children {} Visits {}>".format(list(self.children.keys()), self.visits)
+            return "<RootNode Visits {}>".format(self.visits)
     
     # Get the relative popularity of a node compared to its peers
     def getPopularity(self):
@@ -33,20 +34,26 @@ class TreeNode():
 
         # Remove the reference from the parent
         parentNode = self.parent
-        del parentNode.children[self.value]
 
         # Remove all the children from the child
-        for cnk in list(self.children.keys()):
-            self.children[cnk].prune()
+        for child in self.children:
+            child.prune()
 
         # Clear the dictionary and itself
-        self.children = None
+        self.children = []
         self = None
+
+        # Remove the reference from the parent (pt. 2)
+        for i in range(len(parentNode.children)):
+            if parentNode.children[i] is None:
+                parentNode.children.pop(i)
 
 # Tree Parameters
 class TreeParams():
     def __init__(self):
-        self.popularityThreshold = 0
+        self.popularityThreshold = 0    # What popularity for a pattern is unacceptable
+        self.tolGranularity = 0.1       # Add 0.1 to the tolerance when we get a rejection
+        self.tolDecrease = 2            # Divide tolerance by 2 when we find a match
 
 # Pattern Tree
 class PatternTree():
@@ -59,14 +66,14 @@ class PatternTree():
         return printNodes(self.root)
 
     # Insert an array in the tree, starting at root
-    def insertArray(self, array):
-        insertArrayRecursive(self.root, array)
+    def insertArray(self, array, params):
+        insertArrayRecursive(self.root, array, params)
         if array == []:
             return
     
-    def insertPattern(self, pattern):
+    def insertPattern(self, pattern, params):
         for i in range(len(pattern)):
-            insertArrayRecursive(self.root, pattern[i:])
+            insertArrayRecursive(self.root, pattern[i:], params)
     
     def printDiscoveredPatterns(self, params):
         print(printPatternsRecursive(self.root, [], 1))
@@ -77,37 +84,48 @@ class PatternTree():
 
     
 # Other helper methods
-def insertArrayRecursive(treePos, array):
+def insertArrayRecursive(treePos, array, params):
     if len(array) == 0:
         return
-    try:
-        # Increase the visits by 1
-        treePos.visits += 1
 
-        # Access the next child
-        nextNode = treePos.children[array[0]]
-        insertArrayRecursive(nextNode, array[1:])
+    # Increase the visits by 1
+    treePos.visits += 1
 
-    except KeyError:
+    # Try to find a child that matches the criterion
+    found = False
+    for child in treePos.children:
+
+        # If we get a tolerance match
+        if not found and array[0] > child.value - child.tolerance and array[0] < child.value + child.tolerance:
+            found = True
+            insertArrayRecursive(child, array[1:], params)
+            child.tolerance /= params.tolDecrease
+        
+        # Increase the tolerance since we did not get a match yet
+        child.tolerance += params.tolGranularity
+
+    if not found:
         # Add new node if it does not exist in the children dict
-        newNode = TreeNode(treePos, array[0])
+        newNode = TreeNode(treePos, array[0], 0)
         newNode.visits = 0
-        treePos.children[array[0]] = newNode
+        treePos.children.append(newNode)
 
         # Add child node of the new node
         if len(array) >= 2:
-            newNode.children[array[1]] = TreeNode(newNode, array[1])
-            newNode.children[array[1]].visits = 0
+            newSecondNode = TreeNode(newNode, array[1], 0)
+            newNode.children.append(newSecondNode)
+            newSecondNode.visits = 0
 
 # Print the nodes in the tree in a hierarchy
 def printNodes(root):
     currentString = str(root) + "\n"
-    for cnk in list(root.children.keys()):
-        currentString += printNodes(root.children[cnk])
+    for child in root.children:
+        currentString += printNodes(child)
     return currentString
 
 # Print all the meaningful patterns we can find
 def printPatternsRecursive(treeNode, parents, prevPopularity):
+    print(treeNode)
 
     # If there are no children, then return the string with the pattern
     if len(treeNode.children) == 0:
@@ -124,9 +142,9 @@ def printPatternsRecursive(treeNode, parents, prevPopularity):
         printString = ""
 
         # Iterate through the children
-        for cnk in list(treeNode.children.keys()):
-            parents.append(cnk)
-            printString += printPatternsRecursive(treeNode.children[cnk], parents, prevPopularity * treeNode.getPopularity())
+        for child in treeNode.children:
+            parents.append(child.value)
+            printString += printPatternsRecursive(child, parents, prevPopularity * treeNode.getPopularity())
             parents.pop()
         return printString
 
@@ -142,11 +160,11 @@ def pruneTreeRecursively(treeNode, prevPopularity, params):
     # We do have children
     else:
         # Iterate through the children
-        for cnk in list(treeNode.children.keys()):
-            if prevPopularity * treeNode.children[cnk].getPopularity() <= params.popularityThreshold:
-                treeNode.children[cnk].prune()
+        for child in treeNode.children:
+            if prevPopularity * child.getPopularity() <= params.popularityThreshold:
+                child.prune()
             else:
-                pruneTreeRecursively(treeNode.children[cnk], prevPopularity * treeNode.getPopularity(), params)
+                pruneTreeRecursively(child, prevPopularity * treeNode.getPopularity(), params)    
 
 # Main method
 if __name__ == "__main__":
@@ -155,7 +173,7 @@ if __name__ == "__main__":
     import json
 
     # Create the root and the tree
-    root = TreeNode(None, None)
+    root = TreeNode(None, None, None)
     patternTree = PatternTree(root)
     params = TreeParams()
 
@@ -166,11 +184,16 @@ if __name__ == "__main__":
     for i in range(len(stockData["candles"])):
         stockPrices.append(stockData["candles"][i]["close"])
     
-    print(stockPrices[:20])
+    # Calculate stock price changes as percentages
+    stockPercentChanges = []
+    for i in range(len(stockPrices) - 1):
+        stockPercentChanges.append((stockPrices[i + 1] - stockPrices[i]) * 100 / stockPrices[i])
+
+    print(stockPercentChanges)
 
     # Insert an array in the pattern tree
-    #patternTree.insertPattern([2,1,2,4,2,2,3,1,2,4,2,2,1,3,4,2,4,1,3,2,1,2,3,2,2,1,2,2,2,1,2])
-    #patternTree.prune(params)
-    #patternTree.printDiscoveredPatterns(params)
-    #print()
-    #print(patternTree)
+    patternTree.insertPattern([2,1,2,4,2,2,3,1,2,4,2,2,1,3,4,2,4,1,3,2,1,2,3,2,2,1,2,2,2,1,2], params)
+    patternTree.prune(params)
+    patternTree.printDiscoveredPatterns(params)
+    print()
+    print(patternTree)
