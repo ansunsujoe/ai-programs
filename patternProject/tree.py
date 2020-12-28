@@ -14,7 +14,7 @@ class TreeNode():
     # The representation
     def __repr__(self):
         if self.parent:
-            return (self.depth * "  ") + "<Node Popularity {} Visits {} Children {}>".format(round(self.getPopularity(), 2), self.visits, list(self.children.keys()))
+            return (self.depth * "  ") + "<Node {} Popularity {} Visits {}>".format(self.value, round(self.getPopularity(), 2), self.visits)
         else:
             return "<RootNode Children {} Visits {}>".format(list(self.children.keys()), self.visits)
     
@@ -37,11 +37,16 @@ class TreeNode():
 
         # Remove all the children from the child
         for cnk in list(self.children.keys()):
-            prune(self.children[cnk])
+            self.children[cnk].prune()
 
         # Clear the dictionary and itself
         self.children = None
         self = None
+
+# Tree Parameters
+class TreeParams():
+    def __init__(self):
+        self.popularityThreshold = 0
 
 # Pattern Tree
 class PatternTree():
@@ -63,8 +68,12 @@ class PatternTree():
         for i in range(len(pattern)):
             insertArrayRecursive(self.root, pattern[i:])
     
-    def printDiscoveredPatterns(self):
+    def printDiscoveredPatterns(self, params):
         print(printPatternsRecursive(self.root, [], 1))
+
+    def prune(self, params):
+        pruneTreeRecursively(self.root, 1, params)
+
 
     
 # Other helper methods
@@ -98,37 +107,57 @@ def printNodes(root):
     return currentString
 
 # Print all the meaningful patterns we can find
-def printPatternsRecursive(treeNode, parents, prevProbability):
+def printPatternsRecursive(treeNode, parents, prevPopularity):
 
     # If there are no children, then return the string with the pattern
+    if len(treeNode.children) == 0:
+
+        # If the pattern is too short, don't print it
+        if treeNode.depth <= 2:
+            return ""
+        
+        # Else return the pattern we found
+        return "Pattern {}, Cum Popularity {}\n".format(parents, prevPopularity * treeNode.getPopularity())
+
+    # We do have children
+    else:
+        printString = ""
+
+        # Iterate through the children
+        for cnk in list(treeNode.children.keys()):
+            parents.append(cnk)
+            printString += printPatternsRecursive(treeNode.children[cnk], parents, prevPopularity * treeNode.getPopularity())
+            parents.pop()
+        return printString
+
+# Prune the tree
+def pruneTreeRecursively(treeNode, prevPopularity, params):
+    # If there are no children
     if len(treeNode.children) == 0:
 
         # If the pattern is too short, then prune
         if treeNode.depth <= 2:
             treeNode.prune()
-            return ""
-        
-        # Else return the pattern we found
-        return "Pattern {}, Cum Popularity {}\n".format(parents, prevProbability * treeNode.getPopularity())
-
+    
     # We do have children
     else:
-        printString = ""
-    
+        # Iterate through the children
         for cnk in list(treeNode.children.keys()):
-            parents.append(cnk)
-            printString += printPatternsRecursive(treeNode.children[cnk], parents, prevProbability * treeNode.getPopularity())
-            parents.pop()
-        return printString
+            if prevPopularity * treeNode.children[cnk].getPopularity() <= params.popularityThreshold:
+                treeNode.children[cnk].prune()
+            else:
+                pruneTreeRecursively(treeNode.children[cnk], prevPopularity * treeNode.getPopularity(), params)
 
 
 if __name__ == "__main__":
     # Create the root and the tree
     root = TreeNode(None, None)
     patternTree = PatternTree(root)
+    params = TreeParams()
 
     # Insert an array in the pattern tree
-    patternTree.insertPattern([1, 2, 3, 4, 1, 2, 3, 3, 2, 1, 2, 3, 2])
-    patternTree.printDiscoveredPatterns()
+    patternTree.insertPattern([2,1,2,4,2,2,3,1,2,4,2,2,1,3,4,2,4,1,3,2,1,2,3,2,2,1,2,2,2,1,2])
+    patternTree.prune(params)
+    patternTree.printDiscoveredPatterns(params)
     print()
     print(patternTree)
