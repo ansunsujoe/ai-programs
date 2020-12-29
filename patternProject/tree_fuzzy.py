@@ -1,3 +1,6 @@
+import matplotlib.pyplot as plt
+import json
+
 # A class for the node of the pattern tree
 class TreeNode():
 
@@ -50,8 +53,23 @@ class TreeNode():
 class TreeParams():
     def __init__(self):
         self.popularityThreshold = 0    # What popularity for a pattern is unacceptable
-        self.tolGranularity = 0.1       # Add 0.1 to the tolerance when we get a rejection
-        self.tolDecrease = 2            # Divide tolerance by 2 when we find a match
+        self.tolGranularity = 0.1       # Add to the tolerance when we get a rejection
+        self.tolDecrease = 2            # Divide tolerance when we find a match
+        self.tolThreshold = 2           # At what point do we just get rid of the node
+
+class Pattern():
+    def __init__(self, sequence, cumPopularity):
+        self.sequence = sequence
+        self.cumPopularity = popularity
+    
+    def __repr__(self):
+        return "Pattern {}, Cum Popularity {}\n".format([round(x, 2) for x in sequence], cumPopularity)
+
+    def plot(self):
+        plotArray = [10]
+        for i in range(len(self.sequence)):
+            plotArray.append(((self.sequence[i] + 100) / 100) * plotArray[i])
+        print(plotArray)
 
 # Pattern Tree
 class PatternTree():
@@ -97,7 +115,11 @@ def insertArrayRecursive(treePos, array, params):
         if not found and array[0] >= child.value - child.tolerance and array[0] <= child.value + child.tolerance:
             found = True
             insertArrayRecursive(child, array[1:], params)
+
+            # Update the tolerance and the actual value itself (centroid)
             child.tolerance /= params.tolDecrease
+            if child.visits >= 1:
+                child.value = (child.visits * child.value + array[0]) / (child.visits + 1)
         
         # Increase the tolerance since we did not get a match yet
         child.tolerance += params.tolGranularity
@@ -132,7 +154,7 @@ def printPatternsRecursive(treeNode, parents, prevPopularity):
             return ""
         
         # Else return the pattern we found
-        return "Pattern {}, Cum Popularity {}\n".format(parents, prevPopularity * treeNode.getPopularity())
+        return "Pattern {}, Cum Popularity {}\n".format([round(x, 2) for x in parents], prevPopularity * treeNode.getPopularity())
 
     # We do have children
     else:
@@ -144,6 +166,30 @@ def printPatternsRecursive(treeNode, parents, prevPopularity):
             printString += printPatternsRecursive(child, parents, prevPopularity * treeNode.getPopularity())
             parents.pop()
         return printString
+
+# # Print all the meaningful patterns we can find
+# def printPatternsRecursive(treeNode, parents, prevPopularity):
+
+#     # If there are no children, then return the string with the pattern
+#     if len(treeNode.children) == 0:
+
+#         # If the pattern is too short, don't print it
+#         if treeNode.depth <= 2:
+#             return ""
+        
+#         # Else return the pattern we found
+#         return "Pattern {}, Cum Popularity {}\n".format([round(x, 2) for x in parents], prevPopularity * treeNode.getPopularity())
+
+#     # We do have children
+#     else:
+#         printString = ""
+
+#         # Iterate through the children
+#         for child in treeNode.children:
+#             parents.append(child.value)
+#             printString += printPatternsRecursive(child, parents, prevPopularity * treeNode.getPopularity())
+#             parents.pop()
+#         return printString
 
 # Prune the tree
 def pruneTreeRecursively(treeNode, prevPopularity, params):
@@ -172,9 +218,6 @@ def pruneTreeRecursively(treeNode, prevPopularity, params):
 
 # Main method
 if __name__ == "__main__":
-    
-    # Imports
-    import json
 
     # Create the root and the tree
     root = TreeNode(None, None, None)
@@ -194,16 +237,15 @@ if __name__ == "__main__":
         stockPercentChanges.append((stockPrices[i + 1] - stockPrices[i]) * 100 / stockPrices[i])
 
     # print(stockPercentChanges)
+    sampleStockData = stockPercentChanges
 
-    # Insert an array in the pattern tree
-    patternTree.insertPattern([2,1,2,4,2,4,2,1,2], params)
-    patternTree.prune(params)
-    patternTree.printDiscoveredPatterns(params)
-    print(patternTree)
+    epochs = 10
+    for epoch in range(epochs):
 
-    print()
-
-    patternTree.insertPattern([2,1,2,4,2,4,2,1,2], params)
-    patternTree.prune(params)
-    patternTree.printDiscoveredPatterns(params)
-    print(patternTree)
+        # Insert an array in the pattern tree
+        print("Epoch " + str(epoch + 1) + ":")
+        patternTree.insertPattern(sampleStockData, params)
+        patternTree.prune(params)
+        patternTree.printDiscoveredPatterns(params)
+        print(patternTree)
+        print()
