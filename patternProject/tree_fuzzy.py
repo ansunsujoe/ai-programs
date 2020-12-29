@@ -43,10 +43,8 @@ class TreeNode():
         self.children = []
         self = None
 
-        # Remove the reference from the parent (pt. 2)
-        for i in range(len(parentNode.children)):
-            if parentNode.children[i] is None:
-                parentNode.children.pop(i)
+        # Return a status code
+        return 1
 
 # Tree Parameters
 class TreeParams():
@@ -96,7 +94,7 @@ def insertArrayRecursive(treePos, array, params):
     for child in treePos.children:
 
         # If we get a tolerance match
-        if not found and array[0] > child.value - child.tolerance and array[0] < child.value + child.tolerance:
+        if not found and array[0] >= child.value - child.tolerance and array[0] <= child.value + child.tolerance:
             found = True
             insertArrayRecursive(child, array[1:], params)
             child.tolerance /= params.tolDecrease
@@ -125,7 +123,6 @@ def printNodes(root):
 
 # Print all the meaningful patterns we can find
 def printPatternsRecursive(treeNode, parents, prevPopularity):
-    print(treeNode)
 
     # If there are no children, then return the string with the pattern
     if len(treeNode.children) == 0:
@@ -155,16 +152,23 @@ def pruneTreeRecursively(treeNode, prevPopularity, params):
 
         # If the pattern is too short, then prune
         if treeNode.depth <= 2:
-            treeNode.prune()
+            return treeNode.prune()
     
     # We do have children
     else:
         # Iterate through the children
-        for child in treeNode.children:
-            if prevPopularity * child.getPopularity() <= params.popularityThreshold:
-                child.prune()
+        i = 0
+        while i < len(treeNode.children):
+            if treeNode.children[i].visits == 0:
+                treeNode.children[i].prune()
+                treeNode.children.pop(i)
+                i -= 1
             else:
-                pruneTreeRecursively(child, prevPopularity * treeNode.getPopularity(), params)    
+                if pruneTreeRecursively(treeNode.children[i], prevPopularity * treeNode.getPopularity(), params) == 1:
+                    treeNode.children.pop(i)
+                    i -= 1
+            i += 1
+        return 0
 
 # Main method
 if __name__ == "__main__":
@@ -189,11 +193,17 @@ if __name__ == "__main__":
     for i in range(len(stockPrices) - 1):
         stockPercentChanges.append((stockPrices[i + 1] - stockPrices[i]) * 100 / stockPrices[i])
 
-    print(stockPercentChanges)
+    # print(stockPercentChanges)
 
     # Insert an array in the pattern tree
-    patternTree.insertPattern([2,1,2,4,2,2,3,1,2,4,2,2,1,3,4,2,4,1,3,2,1,2,3,2,2,1,2,2,2,1,2], params)
+    patternTree.insertPattern([2,1,2,4,2,4,2,1,2], params)
     patternTree.prune(params)
     patternTree.printDiscoveredPatterns(params)
+    print(patternTree)
+
     print()
+
+    patternTree.insertPattern([2,1,2,4,2,4,2,1,2], params)
+    patternTree.prune(params)
+    patternTree.printDiscoveredPatterns(params)
     print(patternTree)
