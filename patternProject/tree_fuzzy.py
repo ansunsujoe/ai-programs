@@ -54,9 +54,9 @@ class TreeNode():
 class TreeParams():
     def __init__(self):
         self.popularityThreshold = 0    # What popularity for a pattern is unacceptable
-        self.tolGranularity = 0.1       # Add to the tolerance when we get a rejection
+        self.tolGranularity = 0.05       # Add to the tolerance when we get a rejection
         self.tolDecrease = 2            # Divide tolerance when we find a match
-        self.tolThreshold = 2           # At what point do we just get rid of the node
+        self.tolThreshold = 1           # At what point do we just get rid of the node
 
 class Pattern():
 
@@ -129,7 +129,7 @@ def insertArrayRecursive(treePos, array, startPos, params):
     for child in treePos.children:
 
         # If we get a tolerance match
-        if not found and array[startPos] >= child.value - child.tolerance and array[startPos] <= child.value + child.tolerance:
+        if not found and isTolerant("stock", child.value, array[startPos], child.tolerance):
             found = True
             insertArrayRecursive(child, array, startPos + 1, params)
 
@@ -142,7 +142,7 @@ def insertArrayRecursive(treePos, array, startPos, params):
             if child.depth >= 3:
                 child.references.add(startPos - child.depth + 1)
 
-        elif array[startPos] >= child.value - child.tolerance and array[startPos] <= child.value + child.tolerance:
+        elif isTolerant("stock", child.value, array[startPos], child.tolerance):
             child.prune()
         
         else:
@@ -255,6 +255,22 @@ def pruneTreeRecursively(treeNode, params):
             i += 1
         return 0
 
+def isTolerant(domain, nodeValue, dataValue, tolerance):
+    # If we meet the normal definition for tolerance, we may have other
+    # constraints depending on the domain
+    if dataValue >= nodeValue - tolerance and dataValue <= nodeValue + tolerance:
+
+        # If the domain is for stock prices
+        if domain == "stock":
+
+            # We want both node value and data value to be of the same sign
+            if (nodeValue < 0 and dataValue < 0) or (nodeValue > 0 and dataValue > 0):
+                return True
+            else:
+                return False
+    else:
+        return False
+
 # Main method
 if __name__ == "__main__":
 
@@ -291,10 +307,19 @@ if __name__ == "__main__":
         patterns = patternTree.downloadDiscoveredPatterns()
         print("Epoch " + str(epoch + 1) + " (" + str(len(patterns)) + " patterns found):")
         if epoch == 9:
-            for x in patterns:
-                print(x)
-            print()
+            refArray = patterns[0].references
+            patternLen = len(patterns[0].sequence)
             print(patternTree)
+            
+            fig, axs = plt.subplots(2, 2)
+            for i in range(len(refArray)):
+                xaxis = range(refArray[i], refArray[i] + patternLen + 2)
+                yaxis = stockPrices[refArray[i]: refArray[i] + patternLen + 2]
+                # Use a line plot
+                axs[i // 2, i % 2].plot(xaxis, yaxis)
+                axs[1, 1].plot(range(100, 145), stockPrices[100:145])
+            plt.show()
+
         # Print the patterns
         # if epoch == 9:
         #     patterns = patternTree.downloadDiscoveredPatterns()
