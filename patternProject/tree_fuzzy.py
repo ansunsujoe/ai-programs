@@ -58,18 +58,29 @@ class TreeParams():
         self.tolThreshold = 2           # At what point do we just get rid of the node
 
 class Pattern():
-    def __init__(self, sequence, cumPopularity):
-        self.sequence = sequence
-        self.cumPopularity = popularity
-    
-    def __repr__(self):
-        return "Pattern {}, Cum Popularity {}\n".format([round(x, 2) for x in sequence], cumPopularity)
 
+    # Constructor
+    def __init__(self, sequence, cumPopularity):
+        self.sequence = sequence.copy()
+        self.cumPopularity = cumPopularity
+    
+    # Representation
+    def __repr__(self):
+        return "Pattern {}, Cum Popularity {}\n".format([round(x, 2) for x in self.sequence], self.cumPopularity)
+
+    # Plot a sample of a pattern
     def plot(self):
-        plotArray = [10]
+        plotArray = [100]
+
+        # PlotArray is the y-axis and we have a simple x-axis
         for i in range(len(self.sequence)):
             plotArray.append(((self.sequence[i] + 100) / 100) * plotArray[i])
-        print(plotArray)
+        xaxis = range(1, len(plotArray) + 1)
+
+        # Use a line plot
+        plt.plot(xaxis, plotArray)
+        plt.show()
+
 
 # Pattern Tree
 class PatternTree():
@@ -91,8 +102,11 @@ class PatternTree():
         for i in range(len(pattern)):
             insertArrayRecursive(self.root, pattern[i:], params)
     
-    def printDiscoveredPatterns(self, params):
+    def printDiscoveredPatterns(self):
         print(printPatternsRecursive(self.root, [], 1))
+
+    def downloadDiscoveredPatterns(self):
+        return downloadPatternsRecursive(self.root, [], 1)
 
     def prune(self, params):
         pruneTreeRecursively(self.root, 1, params)
@@ -167,29 +181,30 @@ def printPatternsRecursive(treeNode, parents, prevPopularity):
             parents.pop()
         return printString
 
-# # Print all the meaningful patterns we can find
-# def printPatternsRecursive(treeNode, parents, prevPopularity):
+# Print all the meaningful patterns we can find
+def downloadPatternsRecursive(treeNode, parents, prevPopularity):
 
-#     # If there are no children, then return the string with the pattern
-#     if len(treeNode.children) == 0:
+    # If there are no children, then return the string with the pattern
+    if len(treeNode.children) == 0:
 
-#         # If the pattern is too short, don't print it
-#         if treeNode.depth <= 2:
-#             return ""
+        # If the pattern is too short, don't print it
+        if treeNode.depth <= 2:
+            return []
         
-#         # Else return the pattern we found
-#         return "Pattern {}, Cum Popularity {}\n".format([round(x, 2) for x in parents], prevPopularity * treeNode.getPopularity())
+        # Else return the pattern we found
+        return [Pattern(parents, prevPopularity * treeNode.getPopularity())]
 
-#     # We do have children
-#     else:
-#         printString = ""
+    # We do have children
+    else:
+        patternArray = []
 
-#         # Iterate through the children
-#         for child in treeNode.children:
-#             parents.append(child.value)
-#             printString += printPatternsRecursive(child, parents, prevPopularity * treeNode.getPopularity())
-#             parents.pop()
-#         return printString
+        # Iterate through the children
+        for child in treeNode.children:
+            parents.append(child.value)
+            patternArray += downloadPatternsRecursive(child, parents, prevPopularity * treeNode.getPopularity())
+            parents.pop()
+        
+        return patternArray
 
 # Prune the tree
 def pruneTreeRecursively(treeNode, prevPopularity, params):
@@ -219,7 +234,7 @@ def pruneTreeRecursively(treeNode, prevPopularity, params):
 # Main method
 if __name__ == "__main__":
 
-    # Create the root and the tree
+    # Initialize variables for the tree, params, and pattern storage
     root = TreeNode(None, None, None)
     patternTree = PatternTree(root)
     params = TreeParams()
@@ -242,10 +257,13 @@ if __name__ == "__main__":
     epochs = 10
     for epoch in range(epochs):
 
-        # Insert an array in the pattern tree
+        # Insert an array in the pattern tree and then prune the tree
         print("Epoch " + str(epoch + 1) + ":")
         patternTree.insertPattern(sampleStockData, params)
         patternTree.prune(params)
-        patternTree.printDiscoveredPatterns(params)
-        print(patternTree)
-        print()
+
+        # Print the patterns
+        # if epoch == 9:
+        #     patterns = patternTree.downloadDiscoveredPatterns()
+        #     for x in patterns:
+        #         x.plot()
