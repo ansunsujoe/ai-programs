@@ -60,13 +60,14 @@ class TreeParams():
 class Pattern():
 
     # Constructor
-    def __init__(self, sequence, cumPopularity):
+    def __init__(self, sequence, avgTolerance, weight):
         self.sequence = sequence.copy()
-        self.cumPopularity = cumPopularity
+        self.avgTolerance = avgTolerance
+        self.weight = weight
     
     # Representation
     def __repr__(self):
-        return "Pattern {}, Cum Popularity {}\n".format([round(x, 2) for x in self.sequence], self.cumPopularity)
+        return "Pattern {}, Avg Tolerance {}, Weight {}".format([round(x, 2) for x in self.sequence], self.avgTolerance, self.weight)
 
     # Plot a sample of a pattern
     def plot(self):
@@ -106,10 +107,10 @@ class PatternTree():
         print(printPatternsRecursive(self.root, [], 1))
 
     def downloadDiscoveredPatterns(self):
-        return downloadPatternsRecursive(self.root, [], 1)
+        return downloadPatternsRecursive(self.root, [], 0)
 
     def prune(self, params):
-        pruneTreeRecursively(self.root, 1, params)
+        pruneTreeRecursively(self.root, params)
 
 
     
@@ -137,6 +138,10 @@ def insertArrayRecursive(treePos, array, params):
         
         # Increase the tolerance since we did not get a match yet
         child.tolerance += params.tolGranularity
+
+        # If the tolerance is higher than the threshold, restart it to 0
+        if child.tolerance > params.tolThreshold:
+            child.tolerance = 0
 
     if not found:
         # Add new node if it does not exist in the children dict
@@ -182,7 +187,7 @@ def printPatternsRecursive(treeNode, parents, prevPopularity):
         return printString
 
 # Print all the meaningful patterns we can find
-def downloadPatternsRecursive(treeNode, parents, prevPopularity):
+def downloadPatternsRecursive(treeNode, parents, avgTolerance):
 
     # If there are no children, then return the string with the pattern
     if len(treeNode.children) == 0:
@@ -192,7 +197,8 @@ def downloadPatternsRecursive(treeNode, parents, prevPopularity):
             return []
         
         # Else return the pattern we found
-        return [Pattern(parents, prevPopularity * treeNode.getPopularity())]
+        newAvgTolerance = ((treeNode.depth - 1) * avgTolerance + treeNode.tolerance) / treeNode.depth
+        return [Pattern(parents, newAvgTolerance, treeNode.visits)]
 
     # We do have children
     else:
@@ -201,13 +207,21 @@ def downloadPatternsRecursive(treeNode, parents, prevPopularity):
         # Iterate through the children
         for child in treeNode.children:
             parents.append(child.value)
-            patternArray += downloadPatternsRecursive(child, parents, prevPopularity * treeNode.getPopularity())
+
+            # Set the new avg tolerance for the pattern
+            if treeNode.depth > 0:
+                newAvgTolerance = ((treeNode.depth - 1) * avgTolerance + treeNode.tolerance) / treeNode.depth
+            else:
+                newAvgTolerance = 0
+
+            # Recursive call to child
+            patternArray += downloadPatternsRecursive(child, parents, newAvgTolerance)
             parents.pop()
         
         return patternArray
 
 # Prune the tree
-def pruneTreeRecursively(treeNode, prevPopularity, params):
+def pruneTreeRecursively(treeNode, params):
     # If there are no children
     if len(treeNode.children) == 0:
 
@@ -225,7 +239,7 @@ def pruneTreeRecursively(treeNode, prevPopularity, params):
                 treeNode.children.pop(i)
                 i -= 1
             else:
-                if pruneTreeRecursively(treeNode.children[i], prevPopularity * treeNode.getPopularity(), params) == 1:
+                if pruneTreeRecursively(treeNode.children[i], params) == 1:
                     treeNode.children.pop(i)
                     i -= 1
             i += 1
@@ -235,7 +249,7 @@ def pruneTreeRecursively(treeNode, prevPopularity, params):
 if __name__ == "__main__":
 
     # Initialize variables for the tree, params, and pattern storage
-    root = TreeNode(None, None, None)
+    root = TreeNode(None, None, 0)
     patternTree = PatternTree(root)
     params = TreeParams()
 
@@ -258,10 +272,16 @@ if __name__ == "__main__":
     for epoch in range(epochs):
 
         # Insert an array in the pattern tree and then prune the tree
-        print("Epoch " + str(epoch + 1) + ":")
         patternTree.insertPattern(sampleStockData, params)
         patternTree.prune(params)
 
+        patterns = patternTree.downloadDiscoveredPatterns()
+        print("Epoch " + str(epoch + 1) + " (" + str(len(patterns)) + " patterns found):")
+        if epoch == 9:
+            for x in patterns:
+                print(x)
+            print()
+            print(patternTree)
         # Print the patterns
         # if epoch == 9:
         #     patterns = patternTree.downloadDiscoveredPatterns()
