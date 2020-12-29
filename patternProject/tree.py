@@ -167,6 +167,7 @@ if __name__ == "__main__":
         stockPrices.append(stockData["candles"][i]["close"])
     
     print(stockPrices[:20])
+    
 
     # Insert an array in the pattern tree
     #patternTree.insertPattern([2,1,2,4,2,2,3,1,2,4,2,2,1,3,4,2,4,1,3,2,1,2,3,2,2,1,2,2,2,1,2])
