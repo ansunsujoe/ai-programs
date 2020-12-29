@@ -10,6 +10,7 @@ class TreeNode():
         self.tolerance = tolerance
         self.visits = 0
         self.children = []
+        self.references = set()
         self.parent = parent
         self.depth = 0
         if parent:
@@ -18,7 +19,7 @@ class TreeNode():
     # The representation
     def __repr__(self):
         if self.parent:
-            return (self.depth * "  ") + "<Node {} Tolerance {} Visits {} NumChildren {}>".format(self.value, round(self.tolerance, 2), self.visits, len(self.children))
+            return (self.depth * "  ") + "<Node {} Tolerance {} Visits {} NumChildren {} References {}>".format(self.value, round(self.tolerance, 2), self.visits, len(self.children), list(self.references))
         else:
             return "<RootNode Visits {}>".format(self.visits)
     
@@ -60,14 +61,15 @@ class TreeParams():
 class Pattern():
 
     # Constructor
-    def __init__(self, sequence, avgTolerance, weight):
+    def __init__(self, sequence, avgTolerance, weight, references):
         self.sequence = sequence.copy()
         self.avgTolerance = avgTolerance
         self.weight = weight
+        self.references = list(references).copy()
     
     # Representation
     def __repr__(self):
-        return "Pattern {}, Avg Tolerance {}, Weight {}".format([round(x, 2) for x in self.sequence], self.avgTolerance, self.weight)
+        return "Pattern {}, Avg Tolerance {}, Weight {}, References {}".format([round(x, 2) for x in self.sequence], self.avgTolerance, self.weight, self.references)
 
     # Plot a sample of a pattern
     def plot(self):
@@ -95,13 +97,13 @@ class PatternTree():
 
     # Insert an array in the tree, starting at root
     def insertArray(self, array, params):
-        insertArrayRecursive(self.root, array, params)
+        insertArrayRecursive(self.root, array, 0, params)
         if array == []:
             return
     
     def insertPattern(self, pattern, params):
         for i in range(len(pattern)):
-            insertArrayRecursive(self.root, pattern[i:], params)
+            insertArrayRecursive(self.root, pattern, i, params)
     
     def printDiscoveredPatterns(self):
         print(printPatternsRecursive(self.root, [], 1))
@@ -115,8 +117,8 @@ class PatternTree():
 
     
 # Other helper methods
-def insertArrayRecursive(treePos, array, params):
-    if len(array) == 0:
+def insertArrayRecursive(treePos, array, startPos, params):
+    if startPos == len(array):
         return
 
     # Increase the visits by 1
@@ -127,31 +129,39 @@ def insertArrayRecursive(treePos, array, params):
     for child in treePos.children:
 
         # If we get a tolerance match
-        if not found and array[0] >= child.value - child.tolerance and array[0] <= child.value + child.tolerance:
+        if not found and array[startPos] >= child.value - child.tolerance and array[startPos] <= child.value + child.tolerance:
             found = True
-            insertArrayRecursive(child, array[1:], params)
+            insertArrayRecursive(child, array, startPos + 1, params)
 
             # Update the tolerance and the actual value itself (centroid)
             child.tolerance /= params.tolDecrease
             if child.visits >= 1:
-                child.value = (child.visits * child.value + array[0]) / (child.visits + 1)
-        
-        # Increase the tolerance since we did not get a match yet
-        child.tolerance += params.tolGranularity
+                child.value = (child.visits * child.value + array[startPos]) / (child.visits + 1)
+            
+            # Create a reference to the actual data
+            if child.depth >= 3:
+                child.references.add(startPos - child.depth + 1)
 
-        # If the tolerance is higher than the threshold, restart it to 0
-        if child.tolerance > params.tolThreshold:
-            child.tolerance = 0
+        elif array[startPos] >= child.value - child.tolerance and array[startPos] <= child.value + child.tolerance:
+            child.prune()
+        
+        else:
+            # Increase the tolerance since we did not get a match yet
+            child.tolerance += params.tolGranularity
+
+            # If the tolerance is higher than the threshold, restart it to 0
+            if child.tolerance > params.tolThreshold:
+                child.tolerance = 0
 
     if not found:
         # Add new node if it does not exist in the children dict
-        newNode = TreeNode(treePos, array[0], 0)
+        newNode = TreeNode(treePos, array[startPos], 0)
         newNode.visits = 0
         treePos.children.append(newNode)
 
         # Add child node of the new node
-        if len(array) >= 2:
-            newSecondNode = TreeNode(newNode, array[1], 0)
+        if startPos + 1 < len(array):
+            newSecondNode = TreeNode(newNode, array[startPos + 1], 0)
             newNode.children.append(newSecondNode)
             newSecondNode.visits = 0
 
@@ -198,7 +208,7 @@ def downloadPatternsRecursive(treeNode, parents, avgTolerance):
         
         # Else return the pattern we found
         newAvgTolerance = ((treeNode.depth - 1) * avgTolerance + treeNode.tolerance) / treeNode.depth
-        return [Pattern(parents, newAvgTolerance, treeNode.visits)]
+        return [Pattern(parents, newAvgTolerance, treeNode.visits, treeNode.references)]
 
     # We do have children
     else:
@@ -252,6 +262,9 @@ if __name__ == "__main__":
     root = TreeNode(None, None, 0)
     patternTree = PatternTree(root)
     params = TreeParams()
+
+    # Dictionary with database
+    datasetDict = {}
 
     # Read stock data
     stockDataStream = open("data/stock-data/aapl-1year-daily-12-28-20.txt", "r")
