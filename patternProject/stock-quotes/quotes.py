@@ -58,8 +58,7 @@ quote_url = f'https://api.tdameritrade.com/v1/marketdata/{symbol}/pricehistory?a
 def get_quotes():
     # post the data to get the response
     response = requests.request("GET", quote_url, headers=request_headers, data=request_payload)
-
-    print("RESPONSE", response)
+    
     # convert json to dictionary
     decoded_content = response.json()
 

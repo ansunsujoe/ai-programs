@@ -114,7 +114,28 @@ class PatternTree():
     def prune(self, params):
         pruneTreeRecursively(self.root, params)
 
+# A simple class to store stock data from Ameritrade API
+class StockData():
 
+    # The constructor
+    def __init__(self):
+        self.values = []
+        self.jumpValues = []
+    
+    # Add information to both arrays from Ameritrade file
+    def addFromAmeritradeFile(self, filename):
+
+        # Read the file
+        fd = open(filename, "r")
+        data = json.loads(fd.read())
+
+        # Parse out the prices themselves
+        for i in range(len(data["candles"])):
+            self.values.append(data["candles"][i]["close"])
+
+        # Calculate stock price changes as percentages
+        for i in range(len(self.values) - 1):
+            self.jumpValues.append((self.values[i + 1] - self.values[i]) * 100 / self.values[i])
     
 # Other helper methods
 def insertArrayRecursive(treePos, array, startPos, params):
@@ -270,6 +291,7 @@ def isTolerant(domain, nodeValue, dataValue, tolerance):
                 return False
     else:
         return False
+    
 
 # Main method
 if __name__ == "__main__":
@@ -305,23 +327,21 @@ if __name__ == "__main__":
         patternTree.prune(params)
 
         patterns = patternTree.downloadDiscoveredPatterns()
-        print("Epoch " + str(epoch + 1) + " (" + str(len(patterns)) + " patterns found):")
-        if epoch == 9:
-            refArray = patterns[0].references
-            patternLen = len(patterns[0].sequence)
-            print(patternTree)
-            
-            fig, axs = plt.subplots(2, 2)
-            for i in range(len(refArray)):
-                xaxis = range(refArray[i], refArray[i] + patternLen + 2)
-                yaxis = stockPrices[refArray[i]: refArray[i] + patternLen + 2]
-                # Use a line plot
-                axs[i // 2, i % 2].plot(xaxis, yaxis)
-                axs[1, 1].plot(range(100, 145), stockPrices[100:145])
-            plt.show()
+        print("Epoch " + str(epoch + 1) + " (" + str(len(patterns)) + " patterns found)")
 
-        # Print the patterns
         # if epoch == 9:
-        #     patterns = patternTree.downloadDiscoveredPatterns()
-        #     for x in patterns:
-        #         x.plot()
+            
+            # # Plotting similar patterns
+            # refArray = patterns[0].references
+            # patternLen = len(patterns[0].sequence)
+            # print(patternTree)
+            
+            # # Plotting similar patterns
+            # fig, axs = plt.subplots(2, 2)
+            # for i in range(len(refArray)):
+            #     xaxis = range(refArray[i], refArray[i] + patternLen + 2)
+            #     yaxis = stockPrices[refArray[i]: refArray[i] + patternLen + 2]
+            #     # Use a line plot
+            #     axs[i // 2, i % 2].plot(xaxis, yaxis)
+            #     axs[1, 1].plot(range(100, 145), stockPrices[100:145])
+            # plt.show()
