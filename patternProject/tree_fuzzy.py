@@ -14,6 +14,7 @@ class TreeNode():
         self.visits = 0
         self.children = []
         self.references = set()
+        self.outlook = StockOutlook()
         self.parent = parent
         self.depth = 0
         if parent:
@@ -57,22 +58,23 @@ class TreeNode():
 class TreeParams():
     def __init__(self):
         self.popularityThreshold = 0    # What popularity for a pattern is unacceptable
-        self.tolGranularity = 0.05       # Add to the tolerance when we get a rejection
+        self.tolGranularity = 0.02       # Add to the tolerance when we get a rejection
         self.tolDecrease = 2            # Divide tolerance when we find a match
         self.tolThreshold = 1           # At what point do we just get rid of the node
 
 class Pattern():
 
     # Constructor
-    def __init__(self, sequence, avgTolerance, weight, references):
+    def __init__(self, sequence, avgTolerance, weight, references, outlook):
         self.sequence = sequence.copy()
         self.avgTolerance = avgTolerance
         self.weight = weight
         self.references = list(references).copy()
+        self.outlook = outlook
     
     # Representation
     def __repr__(self):
-        return "Pattern {}, Avg Tolerance {}, Weight {}, References {}".format([round(x, 2) for x in self.sequence], self.avgTolerance, self.weight, self.references)
+        return "Pattern {}, Avg Tolerance {}, Weight {}, References {} Outlook {}".format([round(x, 2) for x in self.sequence], round(self.avgTolerance, 3), self.weight, self.references, self.outlook)
 
     # Plot a sample of a pattern
     def plot(self):
@@ -139,6 +141,19 @@ class StockData():
         # Calculate stock price changes as percentages
         for i in range(len(self.values) - 1):
             self.jumpValues.append((self.values[i + 1] - self.values[i]) * 100 / self.values[i])
+
+# Expected outlooks gleaned from patterns
+class StockOutlook():
+
+    # The constructor
+    def __init__(self):
+        self.oneDay = 0
+        self.threeDay = 0
+
+    # The representation
+    def __repr__(self):
+        return "[1d: {}, 3d: {}]".format(round(self.oneDay, 3), round(self.threeDay, 3))
+
     
 # Other helper methods
 def insertArrayRecursive(treePos, array, refName, startPos, params):
@@ -165,9 +180,26 @@ def insertArrayRecursive(treePos, array, refName, startPos, params):
             # Create a reference to the actual data
             if child.depth >= 3:
                 child.references.add((refName, startPos - child.depth + 1))
+            
+            # Add outlook values - what's going to happen in the future after the pattern
+            if child.depth >= 3:
 
-        elif isTolerant("stock", child.value, array[startPos], child.tolerance):
-            child.prune()
+                # 1 day outlook
+                if startPos + 1 < len(array):
+                    currentOutlook = array[startPos + 1]
+                    child.outlook.oneDay = ((child.visits - 1) * child.outlook.oneDay + currentOutlook) / child.visits
+
+                # 3 day outlook (more involved)
+                if startPos + 3 < len(array):
+                    afterPercent = 100
+                    for i in range(3):
+                        afterPercent = valueAfterPercentChange(afterPercent, array[startPos + i + 1])
+                    currentOutlook = afterPercent - 100
+                    child.outlook.threeDay = ((child.visits - 1) * child.outlook.threeDay + currentOutlook) / child.visits
+
+
+        #elif isTolerant("stock", child.value, array[startPos], child.tolerance):
+        #    child.prune()
         
         else:
             # Increase the tolerance since we did not get a match yet
@@ -232,7 +264,7 @@ def downloadPatternsRecursive(treeNode, parents, avgTolerance):
         
         # Else return the pattern we found
         newAvgTolerance = ((treeNode.depth - 1) * avgTolerance + treeNode.tolerance) / treeNode.depth
-        return [Pattern(parents, newAvgTolerance, treeNode.visits, treeNode.references)]
+        return [Pattern(parents, newAvgTolerance, treeNode.visits, treeNode.references, treeNode.outlook)]
 
     # We do have children
     else:
@@ -326,12 +358,15 @@ def visualizeRandomPattern(patternList, dataDict):
     
     # Plotting similar pattern instances - 4 is max in this case (we should interpret references)
     fig, axs = plt.subplots(2, 2)
-    for i in range(4):
+    for i in range(min(len(refArray), 4)):
         xaxis = range(1, 1 + patternLen + 2)
         yaxis = dataDict[refArray[i][0]].values[refArray[i][1]: refArray[i][1] + patternLen + 2]
         # Use a line plot
         axs[i // 2, i % 2].plot(xaxis, yaxis)
     plt.show()
+
+def valueAfterPercentChange(initial, pctChange):
+    return ((initial * pctChange) / 100) + initial
 
 # Main method
 if __name__ == "__main__":
@@ -360,21 +395,7 @@ if __name__ == "__main__":
 
     patterns = patternTree.downloadDiscoveredPatterns()
     for x in patterns:
-        print(x)
-
-        # if epoch == 9:
-            
-            # # Plotting similar patterns
-            # refArray = patterns[0].references
-            # patternLen = len(patterns[0].sequence)
-            # print(patternTree)
-            
-            # # Plotting similar patterns
-            # fig, axs = plt.subplots(2, 2)
-            # for i in range(len(refArray)):
-            #     xaxis = range(refArray[i], refArray[i] + patternLen + 2)
-            #     yaxis = stockPrices[refArray[i]: refArray[i] + patternLen + 2]
-            #     # Use a line plot
-            #     axs[i // 2, i % 2].plot(xaxis, yaxis)
-            #     axs[1, 1].plot(range(100, 145), stockPrices[100:145])
-            # plt.show()
+        if len(x.sequence) >= 4:
+            print(x)
+    # visualizeRandomPattern(patterns, tickerDict)
+    # visualizeRandomPattern(patterns, tickerDict)
