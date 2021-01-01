@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import json
+import os
+import ast
 
 # A class for the node of the pattern tree
 class TreeNode():
@@ -96,14 +98,14 @@ class PatternTree():
         return printNodes(self.root)
 
     # Insert an array in the tree, starting at root
-    def insertArray(self, array, params):
-        insertArrayRecursive(self.root, array, 0, params)
+    def insertArray(self, array, refName, params):
+        insertArrayRecursive(self.root, array, refName, 0, params)
         if array == []:
             return
     
-    def insertPattern(self, pattern, params):
+    def insertPattern(self, pattern, refName, params):
         for i in range(len(pattern)):
-            insertArrayRecursive(self.root, pattern, i, params)
+            insertArrayRecursive(self.root, pattern, refName, i, params)
     
     def printDiscoveredPatterns(self):
         print(printPatternsRecursive(self.root, [], 1))
@@ -127,7 +129,7 @@ class StockData():
 
         # Read the file
         fd = open(filename, "r")
-        data = json.loads(fd.read())
+        data = ast.literal_eval(fd.read())
 
         # Parse out the prices themselves
         for i in range(len(data["candles"])):
@@ -138,7 +140,7 @@ class StockData():
             self.jumpValues.append((self.values[i + 1] - self.values[i]) * 100 / self.values[i])
     
 # Other helper methods
-def insertArrayRecursive(treePos, array, startPos, params):
+def insertArrayRecursive(treePos, array, refName, startPos, params):
     if startPos == len(array):
         return
 
@@ -152,7 +154,7 @@ def insertArrayRecursive(treePos, array, startPos, params):
         # If we get a tolerance match
         if not found and isTolerant("stock", child.value, array[startPos], child.tolerance):
             found = True
-            insertArrayRecursive(child, array, startPos + 1, params)
+            insertArrayRecursive(child, array, refName, startPos + 1, params)
 
             # Update the tolerance and the actual value itself (centroid)
             child.tolerance /= params.tolDecrease
@@ -161,7 +163,7 @@ def insertArrayRecursive(treePos, array, startPos, params):
             
             # Create a reference to the actual data
             if child.depth >= 3:
-                child.references.add(startPos - child.depth + 1)
+                child.references.add((refName, startPos - child.depth + 1))
 
         elif isTolerant("stock", child.value, array[startPos], child.tolerance):
             child.prune()
@@ -291,7 +293,23 @@ def isTolerant(domain, nodeValue, dataValue, tolerance):
                 return False
     else:
         return False
-    
+
+def createStockQuotesDict(dirName):
+    # Create a new dictionary
+    stockDataDict = {}
+
+    # Iterate through each filename
+    for filename in os.listdir(dirName):
+        try:
+            tickerName = filename.split(".")[0]
+            newStock = StockData()
+            newStock.addFromAmeritradeFile(os.path.join(dirName, filename))
+            stockDataDict[tickerName] = newStock
+        except:
+            print("Something went wrong")
+
+    # Return the dictionary        
+    return stockDataDict
 
 # Main method
 if __name__ == "__main__":
@@ -301,33 +319,26 @@ if __name__ == "__main__":
     patternTree = PatternTree(root)
     params = TreeParams()
 
-    # Dictionary with database
-    datasetDict = {}
-
-    # Read stock data
-    stockDataStream = open("data/stock-data/aapl-1year-daily-12-28-20.txt", "r")
-    stockData = json.loads(stockDataStream.read())
-    stockPrices = []
-    for i in range(len(stockData["candles"])):
-        stockPrices.append(stockData["candles"][i]["close"])
-    
-    # Calculate stock price changes as percentages
-    stockPercentChanges = []
-    for i in range(len(stockPrices) - 1):
-        stockPercentChanges.append((stockPrices[i + 1] - stockPrices[i]) * 100 / stockPrices[i])
-
-    # print(stockPercentChanges)
-    sampleStockData = stockPercentChanges
+    # Dictionary with stock database
+    tickerDict = createStockQuotesDict("data/stock-data")
 
     epochs = 10
     for epoch in range(epochs):
 
+        # Iterate through the datasets in the dictionary
+        for ticker in tickerDict.keys():
+            # Insert the data into the pattern tree
+            patternTree.insertPattern(tickerDict[ticker].jumpValues, ticker, params)
+
         # Insert an array in the pattern tree and then prune the tree
-        patternTree.insertPattern(sampleStockData, params)
         patternTree.prune(params)
 
         patterns = patternTree.downloadDiscoveredPatterns()
         print("Epoch " + str(epoch + 1) + " (" + str(len(patterns)) + " patterns found)")
+
+    patterns = patternTree.downloadDiscoveredPatterns()
+    for x in patterns:
+        print(x)
 
         # if epoch == 9:
             
