@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import json
 import os
 import ast
+import random
 
 # A class for the node of the pattern tree
 class TreeNode():
@@ -294,6 +295,7 @@ def isTolerant(domain, nodeValue, dataValue, tolerance):
     else:
         return False
 
+# Create a dictionary that serves as a stock ticker data source
 def createStockQuotesDict(dirName):
     # Create a new dictionary
     stockDataDict = {}
@@ -310,6 +312,26 @@ def createStockQuotesDict(dirName):
 
     # Return the dictionary        
     return stockDataDict
+
+# Visualize a random pattern from a list
+def visualizeRandomPattern(patternList, dataDict):
+
+    # Select the random pattern
+    index = random.randint(0, len(patternList))
+    pattern = patternList[index]
+
+    # Information about the pattern itself that is needed
+    refArray = pattern.references
+    patternLen = len(pattern.sequence)
+    
+    # Plotting similar pattern instances - 4 is max in this case (we should interpret references)
+    fig, axs = plt.subplots(2, 2)
+    for i in range(4):
+        xaxis = range(1, 1 + patternLen + 2)
+        yaxis = dataDict[refArray[i][0]].values[refArray[i][1]: refArray[i][1] + patternLen + 2]
+        # Use a line plot
+        axs[i // 2, i % 2].plot(xaxis, yaxis)
+    plt.show()
 
 # Main method
 if __name__ == "__main__":
