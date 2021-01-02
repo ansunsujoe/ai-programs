@@ -62,6 +62,7 @@ class TreeParams():
         self.tolDecrease = 2            # Divide tolerance when we find a match
         self.tolThreshold = 1           # At what point do we just get rid of the node
 
+# The pattern class
 class Pattern():
 
     # Constructor
@@ -74,7 +75,7 @@ class Pattern():
     
     # Representation
     def __repr__(self):
-        return "Pattern {}, Avg Tolerance {}, Weight {}, References {} Outlook {}".format([round(x, 2) for x in self.sequence], round(sum(self.tolerances) / len(self.tolerances), 3), self.weight, self.references, self.outlook)
+        return "Pattern {}, Avg Tolerance {}, Weight {}, Outlook {}".format([round(x, 2) for x in self.sequence], round(sum(self.tolerances) / len(self.tolerances), 3), self.weight, self.outlook)
 
     # Plot a sample of a pattern
     def plot(self):
@@ -147,12 +148,14 @@ class StockOutlook():
 
     # The constructor
     def __init__(self):
-        self.oneDay = 0
-        self.threeDay = 0
+        self.oneDayExp = 0
+        self.threeDayExp = 0
+        self.oneDayProbPos = 0
+        self.threeDayProbPos = 0
 
     # The representation
     def __repr__(self):
-        return "[1d: {}, 3d: {}]".format(round(self.oneDay, 3), round(self.threeDay, 3))
+        return "[1dExp: {}, 1dProb: {}, 3dExp: {}, 3dProb: {}]".format(round(self.oneDayExp, 3), round(self.oneDayProbPos, 3), round(self.threeDayExp, 3), round(self.threeDayProbPos, 3))
 
     
 # Other helper methods
@@ -187,7 +190,12 @@ def insertArrayRecursive(treePos, array, refName, startPos, params):
                 # 1 day outlook
                 if startPos + 1 < len(array):
                     currentOutlook = array[startPos + 1]
-                    child.outlook.oneDay = ((child.visits - 1) * child.outlook.oneDay + currentOutlook) / child.visits
+                    child.outlook.oneDayExp = ((child.visits - 1) * child.outlook.oneDayExp + currentOutlook) / child.visits
+
+                    if currentOutlook >= 0:
+                        child.outlook.oneDayProbPos = ((child.visits - 1) * child.outlook.oneDayProbPos + 1) / child.visits
+                    else:
+                        child.outlook.oneDayProbPos = ((child.visits - 1) * child.outlook.oneDayProbPos) / child.visits
 
                 # 3 day outlook (more involved)
                 if startPos + 3 < len(array):
@@ -195,7 +203,12 @@ def insertArrayRecursive(treePos, array, refName, startPos, params):
                     for i in range(3):
                         afterPercent = valueAfterPercentChange(afterPercent, array[startPos + i + 1])
                     currentOutlook = afterPercent - 100
-                    child.outlook.threeDay = ((child.visits - 1) * child.outlook.threeDay + currentOutlook) / child.visits
+                    child.outlook.threeDayExp = ((child.visits - 1) * child.outlook.threeDayExp + currentOutlook) / child.visits
+
+                    if currentOutlook >= 0:
+                        child.outlook.threeDayProbPos = ((child.visits - 1) * child.outlook.threeDayProbPos + 1) / child.visits
+                    else:
+                        child.outlook.threeDayProbPos = ((child.visits - 1) * child.outlook.threeDayProbPos) / child.visits
 
 
         #elif isTolerant("stock", child.value, array[startPos], child.tolerance):
@@ -366,7 +379,17 @@ def visualizeRandomPattern(patternList, dataDict):
 def valueAfterPercentChange(initial, pctChange):
     return ((initial * pctChange) / 100) + initial
 
-# Search through list of pattern to find one that matches 
+# Search through list of pattern to find one that matches
+def returnSimilarPatterns(patternList, array):
+
+    # Make a list copy
+    filteredList = patternList.copy()
+
+    # Try to match a pattern (start from end and track to beginning)
+    for i in range(1, len(array) + 1):
+        filteredList = [p for p in filteredList if i > len(p.sequence) or isTolerant("stock", p.sequence[-i], array[-i], p.tolerances[-i])]
+    
+    return filteredList
 
 # Main method
 if __name__ == "__main__":
@@ -393,9 +416,15 @@ if __name__ == "__main__":
         patterns = patternTree.downloadDiscoveredPatterns()
         print("Epoch " + str(epoch + 1) + " (" + str(len(patterns)) + " patterns found)")
 
+    # Download the discovered patterns
     patterns = patternTree.downloadDiscoveredPatterns()
-    for x in patterns:
-        if len(x.sequence) >= 4:
-            print(x)
+
+    similarPatterns = returnSimilarPatterns(patterns, [0.2, 0.8, -1.1, 0.2])
+    for x in similarPatterns:
+        print(x)
+    # for x in patterns:
+    #     if len(x.sequence) >= 5:
+    #         print(x)
+
     # visualizeRandomPattern(patterns, tickerDict)
     # visualizeRandomPattern(patterns, tickerDict)
