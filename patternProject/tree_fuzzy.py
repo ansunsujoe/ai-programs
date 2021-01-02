@@ -65,16 +65,16 @@ class TreeParams():
 class Pattern():
 
     # Constructor
-    def __init__(self, sequence, avgTolerance, weight, references, outlook):
+    def __init__(self, sequence, tolerances, weight, references, outlook):
         self.sequence = sequence.copy()
-        self.avgTolerance = avgTolerance
+        self.tolerances = tolerances.copy()
         self.weight = weight
         self.references = list(references).copy()
         self.outlook = outlook
     
     # Representation
     def __repr__(self):
-        return "Pattern {}, Avg Tolerance {}, Weight {}, References {} Outlook {}".format([round(x, 2) for x in self.sequence], round(self.avgTolerance, 3), self.weight, self.references, self.outlook)
+        return "Pattern {}, Avg Tolerance {}, Weight {}, References {} Outlook {}".format([round(x, 2) for x in self.sequence], round(sum(self.tolerances) / len(self.tolerances), 3), self.weight, self.references, self.outlook)
 
     # Plot a sample of a pattern
     def plot(self):
@@ -114,7 +114,7 @@ class PatternTree():
         print(printPatternsRecursive(self.root, [], 1))
 
     def downloadDiscoveredPatterns(self):
-        return downloadPatternsRecursive(self.root, [], 0)
+        return downloadPatternsRecursive(self.root, [], [])
 
     def prune(self, params):
         pruneTreeRecursively(self.root, params)
@@ -253,7 +253,7 @@ def printPatternsRecursive(treeNode, parents, prevPopularity):
         return printString
 
 # Print all the meaningful patterns we can find
-def downloadPatternsRecursive(treeNode, parents, avgTolerance):
+def downloadPatternsRecursive(treeNode, parents, tolerances):
 
     # If there are no children, then return the string with the pattern
     if len(treeNode.children) == 0:
@@ -263,8 +263,7 @@ def downloadPatternsRecursive(treeNode, parents, avgTolerance):
             return []
         
         # Else return the pattern we found
-        newAvgTolerance = ((treeNode.depth - 1) * avgTolerance + treeNode.tolerance) / treeNode.depth
-        return [Pattern(parents, newAvgTolerance, treeNode.visits, treeNode.references, treeNode.outlook)]
+        return [Pattern(parents, tolerances, treeNode.visits, treeNode.references, treeNode.outlook)]
 
     # We do have children
     else:
@@ -272,17 +271,15 @@ def downloadPatternsRecursive(treeNode, parents, avgTolerance):
 
         # Iterate through the children
         for child in treeNode.children:
-            parents.append(child.value)
 
-            # Set the new avg tolerance for the pattern
-            if treeNode.depth > 0:
-                newAvgTolerance = ((treeNode.depth - 1) * avgTolerance + treeNode.tolerance) / treeNode.depth
-            else:
-                newAvgTolerance = 0
+            # Update values and tolerances arrays
+            parents.append(child.value)
+            tolerances.append(child.tolerance)
 
             # Recursive call to child
-            patternArray += downloadPatternsRecursive(child, parents, newAvgTolerance)
+            patternArray += downloadPatternsRecursive(child, parents, tolerances)
             parents.pop()
+            tolerances.pop()
         
         return patternArray
 
@@ -365,8 +362,11 @@ def visualizeRandomPattern(patternList, dataDict):
         axs[i // 2, i % 2].plot(xaxis, yaxis)
     plt.show()
 
+# Return the final value after percent change calculation
 def valueAfterPercentChange(initial, pctChange):
     return ((initial * pctChange) / 100) + initial
+
+# Search through list of pattern to find one that matches 
 
 # Main method
 if __name__ == "__main__":
