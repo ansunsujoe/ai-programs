@@ -147,15 +147,15 @@ class StockData():
 class StockOutlook():
 
     # The constructor
-    def __init__(self):
-        self.oneDayExp = 0
-        self.threeDayExp = 0
-        self.oneDayProbPos = 0
-        self.threeDayProbPos = 0
+    def __init__(self, oneDayExp = 0, threeDayExp = 0, oneDayProbPos = 0, threeDayProbPos = 0):
+        self.oneDayExp = oneDayExp
+        self.threeDayExp = threeDayExp
+        self.oneDayProbPos = oneDayProbPos
+        self.threeDayProbPos = threeDayProbPos
 
     # The representation
     def __repr__(self):
-        return "[1dExp: {}, 1dProb: {}, 3dExp: {}, 3dProb: {}]".format(round(self.oneDayExp, 3), round(self.oneDayProbPos, 3), round(self.threeDayExp, 3), round(self.threeDayProbPos, 3))
+        return "[1dExp: {}, 1dProb+: {}, 3dExp: {}, 3dProb+: {}]".format(round(self.oneDayExp, 3), round(self.oneDayProbPos, 3), round(self.threeDayExp, 3), round(self.threeDayProbPos, 3))
 
     
 # Other helper methods
@@ -391,6 +391,28 @@ def returnSimilarPatterns(patternList, array):
     
     return filteredList
 
+# Merge a list of stock outlooks from different patterns into one combined weighted outlook
+def mergeStockOutlooks(patternList):
+
+    # Counter/accumulator variables
+    totalWeight = 0
+    total1dExp = 0
+    total1dProb = 0
+    total3dExp = 0
+    total3dProb = 0
+
+    # Iterate through the outlooks and update the accumulator variables
+    for p in patternList:
+        totalWeight += p.weight
+        total1dExp += p.outlook.oneDayExp * p.weight
+        total1dProb += p.outlook.oneDayProbPos * p.weight
+        total3dExp += p.outlook.threeDayExp * p.weight
+        total3dProb += p.outlook.threeDayProbPos * p.weight
+        print(totalWeight)
+        print(total1dProb)
+
+    return StockOutlook(total1dExp / totalWeight, total3dExp / totalWeight, total1dProb / totalWeight, total3dProb / totalWeight)
+
 # Main method
 if __name__ == "__main__":
 
@@ -400,7 +422,7 @@ if __name__ == "__main__":
     params = TreeParams()
 
     # Dictionary with stock database
-    tickerDict = createStockQuotesDict("data/stock-data")
+    tickerDict = createStockQuotesDict("data/stock-data-train")
 
     epochs = 10
     for epoch in range(epochs):
@@ -420,8 +442,8 @@ if __name__ == "__main__":
     patterns = patternTree.downloadDiscoveredPatterns()
 
     similarPatterns = returnSimilarPatterns(patterns, [0.2, 0.8, -1.1, 0.2])
-    for x in similarPatterns:
-        print(x)
+    outlook = mergeStockOutlooks(similarPatterns)
+    print(outlook)
     # for x in patterns:
     #     if len(x.sequence) >= 5:
     #         print(x)
